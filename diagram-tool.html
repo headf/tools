@@ -1,0 +1,2513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>系统流程图 & 功能模块图 绘制工具</title>
+<style>
+:root {
+  --bg: #f5f5f5;
+  --panel-bg: #ffffff;
+  --border: #d0d0d0;
+  --text: #333333;
+  --text-secondary: #888888;
+  --accent: #4a90d9;
+  --accent-hover: #357abd;
+  --danger: #e74c3c;
+  --success: #27ae60;
+  --warning: #f39c12;
+  --shape-fill: #f0f4f8;
+  --shape-stroke: #b0b8c0;
+  --shape-text: #333333;
+  --grid: #e8e8e8;
+  --canvas-bg: #ffffff;
+  --shadow: 0 2px 8px rgba(0,0,0,0.3);
+  --radius: 8px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 顶部工具栏 */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--border);
+  z-index: 100;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.toolbar .section {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar .divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.toolbar button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.toolbar button:hover { background: #e8edf2; border-color: #aaa; }
+.toolbar button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.toolbar button.danger { border-color: var(--danger); color: var(--danger); }
+.toolbar button.danger:hover { background: var(--danger); color: #fff; }
+.toolbar button.success { border-color: var(--success); color: var(--success); }
+.toolbar button.success:hover { background: var(--success); color: #fff; }
+
+.toolbar label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar select, .toolbar input[type=color] {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.toolbar input[type=color] {
+  width: 28px;
+  height: 28px;
+  padding: 2px;
+}
+
+.toolbar .diagram-type-tabs {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.toolbar .diagram-type-tabs button {
+  border: none;
+  border-radius: 0;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.toolbar .diagram-type-tabs button#mode-flowchart.active {
+  background: #4caf50;
+  border-color: #4caf50;
+  color: #fff;
+}
+
+.toolbar .diagram-type-tabs button#mode-module.active {
+  background: #1976d2;
+  border-color: #1976d2;
+  color: #fff;
+}
+
+/* 主体布局 */
+.main-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* 左侧形状面板 */
+.shape-panel {
+  width: 200px;
+  background: var(--panel-bg);
+  border-right: 1px solid var(--border);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.shape-panel h3 {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.shape-panel .shape-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #f8f9fa;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: grab;
+  transition: all 0.15s;
+  font-size: 13px;
+}
+
+.shape-panel .shape-item:hover {
+  background: #e8edf2;
+  border-color: var(--accent);
+  transform: translateX(2px);
+}
+
+.shape-panel .shape-item:active { cursor: grabbing; }
+
+.shape-panel .shape-preview {
+  width: 36px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.shape-panel .shape-preview svg {
+  width: 100%;
+  height: 100%;
+}
+
+.shape-panel .preset-group {
+  margin-top: 8px;
+}
+
+.shape-panel .preset-btn {
+  width: 100%;
+  padding: 8px;
+  background: #f8f9fa;
+  border: 1px dashed var(--border);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.shape-panel .preset-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* 画布容器 */
+.canvas-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--canvas-bg);
+}
+
+.canvas-container .grid-bg {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+canvas {
+  position: absolute;
+  top: 0; left: 0;
+  z-index: 1;
+}
+
+/* 悬浮文本编辑器 */
+.text-editor-overlay {
+  position: absolute;
+  z-index: 200;
+  display: none;
+}
+
+.text-editor-overlay textarea {
+  background: #e8edf2;
+  color: var(--shape-text);
+  border: 2px solid var(--accent);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  text-align: center;
+  overflow: hidden;
+}
+
+/* 右键菜单 */
+.context-menu {
+  position: fixed;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  z-index: 1000;
+  min-width: 160px;
+  padding: 4px;
+  display: none;
+}
+
+.context-menu .menu-item {
+  padding: 8px 14px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+
+.context-menu .menu-item:hover { background: #e8edf2; }
+.context-menu .menu-item.danger { color: var(--danger); }
+.context-menu .divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+/* 缩放指示器 */
+.zoom-indicator {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  z-index: 50;
+  pointer-events: none;
+}
+
+/* 连接点高亮 */
+.connection-point {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  z-index: 150;
+  pointer-events: none;
+  display: none;
+  transform: translate(-50%, -50%);
+}
+
+/* Toast消息 */
+.toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #555;
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 20px;
+  font-size: 13px;
+  z-index: 9999;
+  animation: toastIn 0.3s ease, toastOut 0.3s ease 1.7s forwards;
+  pointer-events: none;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* 提示tooltip */
+.tooltip {
+  position: absolute;
+  background: #000;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  z-index: 300;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .shape-panel { width: 140px; padding: 8px; }
+  .shape-panel .shape-item { padding: 8px; font-size: 11px; gap: 6px; }
+  .shape-panel .shape-preview { width: 28px; height: 18px; }
+  .toolbar button { padding: 4px 8px; font-size: 11px; }
+}
+</style>
+</head>
+<body>
+
+<!-- 顶部工具栏 -->
+<div class="toolbar" id="toolbar">
+  <div class="section">
+    <div class="diagram-type-tabs">
+      <button id="mode-flowchart" class="active" title="系统流程图模式">🔄 流程图</button>
+      <button id="mode-module" title="功能模块图模式">📦 模块图</button>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="section">
+    <button id="btn-select" class="active" title="选择/移动 (V)">🖱️ 选择</button>
+    <button id="btn-connect" title="连线模式 (L)">🔗 连线</button>
+    <button id="btn-pan" title="画布拖动 (H 或 空格+拖拽)">✋ 拖动</button>
+  </div>
+  <div class="divider"></div>
+  <div class="section">
+    <button id="btn-undo" title="撤销 (Ctrl+Z)">↩ 撤销</button>
+    <button id="btn-redo" title="重做 (Ctrl+Y)">↪ 重做</button>
+  </div>
+  <div class="divider"></div>
+  <div class="section">
+    <button id="btn-delete" class="danger" title="删除选中 (Delete)">🗑 删除</button>
+    <button id="btn-duplicate" title="复制选中 (Ctrl+D)">📋 复制</button>
+    <button id="btn-clear" class="danger" title="清空画布">🧹 清空</button>
+  </div>
+  <div class="divider"></div>
+  <div class="section">
+    <button id="btn-export-png" class="success" title="导出为PNG图片">🖼️ 导出PNG</button>
+    <button id="btn-export-svg" title="导出为SVG">📐 导出SVG</button>
+  </div>
+  <div class="divider"></div>
+  <div class="section">
+    <label>缩放:
+      <button id="btn-zoom-out">−</button>
+      <span id="zoom-label" style="min-width:40px;text-align:center;font-size:12px;">100%</span>
+      <button id="btn-zoom-in">+</button>
+      <button id="btn-zoom-fit">⊡</button>
+    </label>
+  </div>
+  <div class="divider"></div>
+  <div class="section">
+    <label>填充: <input type="color" id="color-fill" value="#f0f4f8" title="形状填充色"></label>
+    <label>边框: <input type="color" id="color-stroke" value="#b0b8c0" title="形状边框色"></label>
+    <label>文字: <input type="color" id="color-text" value="#333333" title="文字颜色"></label>
+  </div>
+</div>
+
+<div class="main-container">
+  <!-- 左侧形状面板 -->
+  <div class="shape-panel" id="shapePanel">
+    <!-- ========== 流程图模式 ========== -->
+    <div id="flowchart-shapes" class="mode-shapes">
+      <h3>🔄 流程图形状</h3>
+
+      <div class="shape-item" data-shape="rounded-rect" draggable="true">
+        <div class="shape-preview">
+          <svg viewBox="0 0 40 24"><rect x="2" y="2" width="36" height="20" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/></svg>
+        </div>
+        <span>起止框 (开始/结束)</span>
+      </div>
+
+      <div class="shape-item" data-shape="rect" draggable="true">
+        <div class="shape-preview">
+          <svg viewBox="0 0 40 24"><rect x="2" y="2" width="36" height="20" rx="2" fill="#f0f4f8" stroke="#b0b8c0" stroke-width="1.5"/></svg>
+        </div>
+        <span>处理框 (过程步骤)</span>
+      </div>
+
+      <div class="shape-item" data-shape="diamond" draggable="true">
+        <div class="shape-preview">
+          <svg viewBox="0 0 40 30"><polygon points="20,2 38,15 20,28 2,15" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/></svg>
+        </div>
+        <span>判断框 (条件分支)</span>
+      </div>
+
+      <div class="shape-item" data-shape="parallelogram" draggable="true">
+        <div class="shape-preview">
+          <svg viewBox="0 0 40 24"><polygon points="10,2 38,2 30,22 2,22" fill="#e3f2fd" stroke="#2196f3" stroke-width="1.5"/></svg>
+        </div>
+        <span>输入/输出框</span>
+      </div>
+
+      <div class="shape-item" data-shape="circle" draggable="true">
+        <div class="shape-preview">
+          <svg viewBox="0 0 28 28"><ellipse cx="14" cy="14" rx="12" ry="12" fill="#fce4ec" stroke="#e91e63" stroke-width="1.5"/></svg>
+        </div>
+        <span>连接点</span>
+      </div>
+
+      <div class="shape-item" data-shape="document" draggable="true">
+        <div class="shape-preview">
+          <svg viewBox="0 0 30 32"><path d="M4,2 L20,2 L26,8 L26,30 L4,30 Z" fill="#f0f4f8" stroke="#b0b8c0" stroke-width="1.5"/><path d="M20,2 L20,8 L26,8" fill="none" stroke="#b0b8c0" stroke-width="1.5"/></svg>
+        </div>
+        <span>文档</span>
+      </div>
+    </div>
+
+    <!-- ========== 模块图模式 ========== -->
+    <div id="module-shapes" class="mode-shapes" style="display:none;">
+      <h3>📦 架构模块形状</h3>
+
+      <div class="shape-item" data-shape="rect" draggable="true">
+        <div class="shape-preview">
+          <svg viewBox="0 0 40 24"><rect x="2" y="2" width="36" height="20" rx="2" fill="#e3f2fd" stroke="#1976d2" stroke-width="1.5"/></svg>
+        </div>
+        <span>服务/模块</span>
+      </div>
+
+      <div class="shape-item" data-shape="rounded-rect" draggable="true">
+        <div class="shape-preview">
+          <svg viewBox="0 0 40 24"><rect x="2" y="2" width="36" height="20" rx="10" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1.5"/></svg>
+        </div>
+        <span>子系统</span>
+      </div>
+
+      <div class="shape-item" data-shape="cylinder" draggable="true">
+        <div class="shape-preview">
+          <svg viewBox="0 0 40 28"><rect x="4" y="6" width="32" height="16" rx="4" fill="#e8f5e9" stroke="#388e3c" stroke-width="1.5"/><ellipse cx="20" cy="6" rx="16" ry="5" fill="#e8f5e9" stroke="#388e3c" stroke-width="1.5"/></svg>
+        </div>
+        <span>数据库 (DB)</span>
+      </div>
+
+      <div class="shape-item" data-shape="cloud" draggable="true">
+        <div class="shape-preview">
+          <svg viewBox="0 0 44 26"><path d="M12,24 C5,24 2,19 2,15 C2,10 6,7 10,7 C10,3 16,1 21,2 C26,1 32,3 34,7 C40,7 42,12 42,16 C42,21 38,24 32,24 Z" fill="#e0f7fa" stroke="#00acc1" stroke-width="1.5"/></svg>
+        </div>
+        <span>外部系统 (云)</span>
+      </div>
+
+      <div class="shape-item" data-shape="rect" draggable="true" data-module-variant="queue">
+        <div class="shape-preview">
+          <svg viewBox="0 0 40 24"><rect x="2" y="2" width="36" height="20" rx="2" fill="#fff8e1" stroke="#f9a825" stroke-width="1.5"/></svg>
+        </div>
+        <span>消息队列</span>
+      </div>
+
+      <div class="shape-item" data-shape="rect" draggable="true" data-module-variant="gateway">
+        <div class="shape-preview">
+          <svg viewBox="0 0 40 24"><rect x="2" y="2" width="36" height="20" rx="2" fill="#efebe9" stroke="#5d4037" stroke-width="1.5"/></svg>
+        </div>
+        <span>API网关</span>
+      </div>
+    </div>
+
+    <!-- ========== 连线（两模式通用） ========== -->
+    <h3>🔌 连接线</h3>
+    <div class="shape-item" data-shape="connector" style="cursor:pointer;" id="shape-connector">
+      <div class="shape-preview">
+        <svg viewBox="0 0 40 6"><line x1="2" y1="3" x2="34" y2="3" stroke="#4a90d9" stroke-width="2"/><polygon points="34,0 40,3 34,6" fill="#4a90d9"/></svg>
+      </div>
+      <span>实线箭头</span>
+    </div>
+    <div class="shape-item" data-shape="connector-dashed" style="cursor:pointer;" id="shape-connector-dashed">
+      <div class="shape-preview">
+        <svg viewBox="0 0 40 6"><line x1="2" y1="3" x2="34" y2="3" stroke="#f39c12" stroke-width="2" stroke-dasharray="4,3"/><polygon points="34,0 40,3 34,6" fill="#f39c12"/></svg>
+      </div>
+      <span>虚线箭头</span>
+    </div>
+
+    <!-- ========== 预设模板 ========== -->
+    <div id="flowchart-presets" class="mode-shapes">
+      <h3>📋 流程模板</h3>
+      <div class="preset-group">
+        <button class="preset-btn flow-preset" data-preset="simple-flow">📋 简单流程</button>
+        <button class="preset-btn flow-preset" data-preset="login-flow">🔐 用户登录流程</button>
+        <button class="preset-btn flow-preset" data-preset="crud-flow">💾 CRUD操作流程</button>
+      </div>
+    </div>
+    <div id="module-presets" class="mode-shapes" style="display:none;">
+      <h3>📋 架构模板</h3>
+      <div class="preset-group">
+        <button class="preset-btn mod-preset" data-preset="microservice">🏗️ 微服务架构</button>
+        <button class="preset-btn mod-preset" data-preset="web-arch">🌐 Web三层架构</button>
+        <button class="preset-btn mod-preset" data-preset="api-flow">🔌 API调用链路</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 画布区域 -->
+  <div class="canvas-container" id="canvasContainer">
+    <canvas id="mainCanvas"></canvas>
+    <div class="text-editor-overlay" id="textEditorOverlay">
+      <textarea id="textEditor" rows="1"></textarea>
+    </div>
+    <div class="connection-point" id="connectionPoint"></div>
+    <div class="zoom-indicator" id="zoomIndicator">100%</div>
+  </div>
+</div>
+
+<!-- 右键菜单 -->
+<div class="context-menu" id="contextMenu">
+  <div class="menu-item" data-action="edit">✏️ 编辑文字</div>
+  <div class="menu-item" data-action="duplicate">📋 复制</div>
+  <div class="menu-item" data-action="bringToFront">⬆️ 置于顶层</div>
+  <div class="menu-item" data-action="sendToBack">⬇️ 置于底层</div>
+  <div class="divider"></div>
+  <div class="menu-item" data-action="changeFill">🎨 更改填充色</div>
+  <div class="menu-item" data-action="changeStroke">🖊️ 更改边框色</div>
+  <div class="divider"></div>
+  <div class="menu-item danger" data-action="delete">🗑️ 删除</div>
+</div>
+
+<script>
+class DiagramTool {
+  constructor() {
+    this.container = document.getElementById('canvasContainer');
+    this.canvas = document.getElementById('mainCanvas');
+    this.ctx = this.canvas.getContext('2d');
+
+    // 状态
+    this.shapes = [];
+    this.connections = [];
+    this.selectedShapeId = null;
+    this.selectedConnectionId = null;
+    this.mode = 'select'; // 'select' | 'connect' | 'pan'
+    this.diagramType = 'flowchart'; // 'flowchart' | 'module'
+    this.nextId = 1;
+    this.undoStack = [];
+    this.redoStack = [];
+    this.maxUndo = 50;
+
+    // 视图变换
+    this.zoom = 1;
+    this.panX = 0;
+    this.panY = 0;
+    this.minZoom = 0.2;
+    this.maxZoom = 3;
+
+    // 拖拽状态
+    this.dragging = false;
+    this.dragOffsetX = 0;
+    this.dragOffsetY = 0;
+    this.dragStartX = 0;
+    this.dragStartY = 0;
+    this.isPanning = false;
+    this.panStartX = 0;
+    this.panStartY = 0;
+    this.panStartPanX = 0;
+    this.panStartPanY = 0;
+
+    // 连线状态
+    this.connecting = null; // { fromShapeId, fromPoint, tempX, tempY }
+    this.connectStartPoint = null;
+
+    // 调整大小
+    this.resizing = null; // { shapeId, handle }
+
+    // 连接点吸附
+    this.snapPoints = [];
+    this.hoveredSnapPoint = null;
+
+    // 文本编辑
+    this.editingShapeId = null;
+
+    // 颜色
+    this.defaultFill = '#f0f4f8';
+    this.defaultStroke = '#b0b8c0';
+    this.defaultText = '#333333';
+
+    this.init();
+  }
+
+  init() {
+    this.resizeCanvas();
+    this.saveState();
+    this.bindEvents();
+    this.render();
+    window.addEventListener('resize', () => this.resizeCanvas());
+  }
+
+  genId() { return `s${this.nextId++}`; }
+
+  // ========== Canvas尺寸 ==========
+  resizeCanvas() {
+    const rect = this.container.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    this.canvas.width = rect.width * dpr;
+    this.canvas.height = rect.height * dpr;
+    this.canvas.style.width = rect.width + 'px';
+    this.canvas.style.height = rect.height + 'px';
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.canvasWidth = rect.width;
+    this.canvasHeight = rect.height;
+    this.render();
+  }
+
+  // ========== 坐标转换 ==========
+  screenToWorld(sx, sy) {
+    return {
+      x: (sx - this.panX) / this.zoom,
+      y: (sy - this.panY) / this.zoom
+    };
+  }
+
+  worldToScreen(wx, wy) {
+    return {
+      x: wx * this.zoom + this.panX,
+      y: wy * this.zoom + this.panY
+    };
+  }
+
+  getMousePos(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  // ========== 形状操作 ==========
+  createShape(type, x, y, text = '') {
+    const isFlow = this.diagramType === 'flowchart';
+    // 流程图：不同形状有不同颜色语义 | 模块图：统一蓝色调
+    const styleMap = {
+      rect: { w: 140, h: 60, text: '过程', fill: isFlow ? '#f0f4f8' : '#e3f2fd', stroke: isFlow ? '#b0b8c0' : '#1976d2' },
+      'rounded-rect': { w: 150, h: 55, text: '开始/结束', fill: isFlow ? '#e8f5e9' : '#f3e5f5', stroke: isFlow ? '#4caf50' : '#9c27b0' },
+      diamond: { w: 130, h: 80, text: '判断?', fill: '#fff3e0', stroke: '#ff9800' },
+      parallelogram: { w: 140, h: 60, text: '输入/输出', fill: '#e3f2fd', stroke: '#2196f3' },
+      circle: { w: 70, h: 70, text: '', fill: '#fce4ec', stroke: '#e91e63' },
+      cylinder: { w: 120, h: 80, text: '数据库', fill: '#e8f5e9', stroke: '#388e3c' },
+      document: { w: 100, h: 110, text: '文档', fill: '#f0f4f8', stroke: '#b0b8c0' },
+      cloud: { w: 140, h: 80, text: '外部系统', fill: '#e0f7fa', stroke: '#00acc1' },
+    };
+
+    const d = styleMap[type] || { w: 140, h: 60, text: '节点', fill: '#f0f4f8', stroke: '#b0b8c0' };
+    return {
+      id: this.genId(),
+      type,
+      x: x - d.w / 2,
+      y: y - d.h / 2,
+      w: d.w,
+      h: d.h,
+      text: text || d.text,
+      fill: d.fill,
+      stroke: d.stroke,
+      textColor: '#333333',
+      fontSize: 14,
+      zIndex: this.shapes.length,
+    };
+  }
+
+  addShape(type, x, y) {
+    const shape = this.createShape(type, x, y);
+    this.shapes.push(shape);
+    this.saveState();
+    this.render();
+    return shape;
+  }
+
+  getShapeAt(wx, wy) {
+    // 从上到下查找（z-index高的在上面）
+    for (let i = this.shapes.length - 1; i >= 0; i--) {
+      const s = this.shapes[i];
+      if (this.isPointInShape(wx, wy, s)) return s;
+    }
+    return null;
+  }
+
+  getConnectionAt(wx, wy) {
+    const threshold = 8 / this.zoom;
+    for (let i = this.connections.length - 1; i >= 0; i--) {
+      const c = this.connections[i];
+      if (this.isPointNearConnection(wx, wy, c, threshold)) return c;
+    }
+    return null;
+  }
+
+  isPointInShape(px, py, shape) {
+    const { x, y, w, h, type } = shape;
+    switch (type) {
+      case 'diamond': {
+        const cx = x + w / 2, cy = y + h / 2;
+        const dx = Math.abs(px - cx) / (w / 2);
+        const dy = Math.abs(py - cy) / (h / 2);
+        return dx + dy <= 1;
+      }
+      case 'circle':
+      case 'cylinder': {
+        const cx = x + w / 2, cy = y + h / 2;
+        const rx = w / 2, ry = h / 2;
+        return ((px - cx) ** 2) / (rx ** 2) + ((py - cy) ** 2) / (ry ** 2) <= 1;
+      }
+      case 'cloud': {
+        const cx = x + w / 2, cy = y + h / 2;
+        return Math.abs(px - cx) <= w / 2 * 0.85 && Math.abs(py - cy) <= h / 2 * 0.8;
+      }
+      default:
+        return px >= x && px <= x + w && py >= y && py <= y + h;
+    }
+  }
+
+  isPointNearConnection(px, py, conn, threshold) {
+    const fromShape = this.shapes.find(s => s.id === conn.fromId);
+    const toShape = this.shapes.find(s => s.id === conn.toId);
+    if (!fromShape || !toShape) return false;
+
+    const fromPt = this.getConnectionPoint(fromShape, conn.fromSide || 'right');
+    const toPt = this.getConnectionPoint(toShape, conn.toSide || 'left');
+
+    // 计算点到线段的距离
+    const dx = toPt.x - fromPt.x;
+    const dy = toPt.y - fromPt.y;
+    const len2 = dx * dx + dy * dy;
+    if (len2 === 0) return Math.hypot(px - fromPt.x, py - fromPt.y) <= threshold;
+
+    let t = ((px - fromPt.x) * dx + (py - fromPt.y) * dy) / len2;
+    t = Math.max(0, Math.min(1, t));
+    const nearX = fromPt.x + t * dx;
+    const nearY = fromPt.y + t * dy;
+    return Math.hypot(px - nearX, py - nearY) <= threshold;
+  }
+
+  getConnectionPoint(shape, side) {
+    const { x, y, w, h } = shape;
+    switch (side) {
+      case 'top': return { x: x + w / 2, y: y };
+      case 'bottom': return { x: x + w / 2, y: y + h };
+      case 'left': return { x: x, y: y + h / 2 };
+      case 'right': return { x: x + w, y: y + h / 2 };
+      default: return { x: x + w / 2, y: y + h / 2 };
+    }
+  }
+
+  getBestConnectionSide(fromShape, toShape) {
+    const fc = { x: fromShape.x + fromShape.w / 2, y: fromShape.y + fromShape.h / 2 };
+    const tc = { x: toShape.x + toShape.w / 2, y: toShape.y + toShape.h / 2 };
+    const dx = tc.x - fc.x;
+    const dy = tc.y - fc.y;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      return { fromSide: dx > 0 ? 'right' : 'left', toSide: dx > 0 ? 'left' : 'right' };
+    } else {
+      return { fromSide: dy > 0 ? 'bottom' : 'top', toSide: dy > 0 ? 'top' : 'bottom' };
+    }
+  }
+
+  addConnection(fromId, toId, dashed = false) {
+    const fromShape = this.shapes.find(s => s.id === fromId);
+    const toShape = this.shapes.find(s => s.id === toId);
+    if (!fromShape || !toShape || fromId === toId) return null;
+
+    // 检查是否已有相同连接
+    const exists = this.connections.find(c => c.fromId === fromId && c.toId === toId);
+    if (exists) return exists;
+
+    const sides = this.getBestConnectionSide(fromShape, toShape);
+    const conn = {
+      id: this.genId(),
+      fromId,
+      toId,
+      fromSide: sides.fromSide,
+      toSide: sides.toSide,
+      dashed,
+      color: dashed ? '#ffd43b' : '#6c8cff',
+      label: '',
+      lineWidth: 2,
+    };
+    this.connections.push(conn);
+    this.saveState();
+    this.render();
+    return conn;
+  }
+
+  getShapeConnectionPoints(shape) {
+    const { x, y, w, h } = shape;
+    return [
+      { side: 'top', x: x + w / 2, y: y },
+      { side: 'bottom', x: x + w / 2, y: y + h },
+      { side: 'left', x: x, y: y + h / 2 },
+      { side: 'right', x: x + w, y: y + h / 2 },
+    ];
+  }
+
+  // ========== 渲染 ==========
+  render() {
+    const ctx = this.ctx;
+    const w = this.canvasWidth;
+    const h = this.canvasHeight;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // 网格背景
+    this.drawGrid();
+
+    ctx.save();
+    ctx.translate(this.panX, this.panY);
+    ctx.scale(this.zoom, this.zoom);
+
+    // 连接线
+    for (const conn of this.connections) {
+      this.drawConnection(conn);
+    }
+
+    // 临时连线
+    if (this.connecting) {
+      this.drawTempConnection();
+    }
+
+    // 形状
+    // 按zIndex排序
+    const sorted = [...this.shapes].sort((a, b) => a.zIndex - b.zIndex);
+    for (const shape of sorted) {
+      this.drawShape(shape);
+    }
+
+    ctx.restore();
+
+    // 更新缩放指示器
+    document.getElementById('zoomIndicator').textContent = Math.round(this.zoom * 100) + '%';
+    document.getElementById('zoom-label').textContent = Math.round(this.zoom * 100) + '%';
+  }
+
+  drawGrid() {
+    const ctx = this.ctx;
+    const gridSize = 30 * this.zoom;
+    const offsetX = this.panX % gridSize;
+    const offsetY = this.panY % gridSize;
+
+    ctx.strokeStyle = '#2a2a3a';
+    ctx.lineWidth = 0.5;
+
+    for (let x = offsetX; x < this.canvasWidth; x += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, this.canvasHeight);
+      ctx.stroke();
+    }
+    for (let y = offsetY; y < this.canvasHeight; y += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(this.canvasWidth, y);
+      ctx.stroke();
+    }
+  }
+
+  drawShape(shape) {
+    const ctx = this.ctx;
+    const { x, y, w, h, type, fill, stroke, text, textColor, fontSize, id } = shape;
+    const isSelected = id === this.selectedShapeId;
+
+    ctx.save();
+    ctx.fillStyle = fill;
+    ctx.strokeStyle = isSelected ? '#6c8cff' : stroke;
+    ctx.lineWidth = isSelected ? 2.5 : 1.5;
+    ctx.shadowColor = isSelected ? 'rgba(108,140,255,0.3)' : 'transparent';
+    ctx.shadowBlur = isSelected ? 10 : 0;
+
+    // 绘制形状路径
+    this.drawShapePath(ctx, shape);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+
+    // 文字
+    ctx.fillStyle = textColor;
+    ctx.font = `${fontSize}px "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const cx = x + w / 2, cy = y + h / 2;
+    this.wrapText(ctx, text, cx, cy, w - 16, fontSize + 4);
+
+    // 选中状态下的调整手柄
+    if (isSelected && this.mode === 'select') {
+      this.drawResizeHandles(shape);
+    }
+
+    // 连线模式下显示连接点
+    if (this.mode === 'connect' && !this.connecting) {
+      this.drawSnapPoints(shape);
+    }
+
+    ctx.restore();
+  }
+
+  drawShapePath(ctx, shape) {
+    const { x, y, w, h, type } = shape;
+    ctx.beginPath();
+    switch (type) {
+      case 'rect':
+      case 'connector':
+        ctx.roundRect(x, y, w, h, 4);
+        break;
+      case 'rounded-rect':
+        ctx.roundRect(x, y, w, h, h / 2);
+        break;
+      case 'diamond':
+        ctx.moveTo(x + w / 2, y);
+        ctx.lineTo(x + w, y + h / 2);
+        ctx.lineTo(x + w / 2, y + h);
+        ctx.lineTo(x, y + h / 2);
+        ctx.closePath();
+        break;
+      case 'parallelogram':
+        ctx.moveTo(x + w * 0.25, y);
+        ctx.lineTo(x + w, y);
+        ctx.lineTo(x + w * 0.75, y + h);
+        ctx.lineTo(x, y + h);
+        ctx.closePath();
+        break;
+      case 'circle':
+        ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+        break;
+      case 'cylinder': {
+        const rx = w / 2, ry = Math.min(h * 0.2, 14);
+        ctx.moveTo(x, y + ry);
+        ctx.lineTo(x, y + h - ry);
+        ctx.ellipse(x + rx, y + h - ry, rx, ry, 0, 0, Math.PI);
+        ctx.lineTo(x + w, y + ry);
+        ctx.ellipse(x + rx, y + ry, rx, ry, 0, Math.PI, 0, true);
+        ctx.closePath();
+        break;
+      }
+      case 'document':
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + w * 0.7, y);
+        ctx.lineTo(x + w, y + h * 0.25);
+        ctx.lineTo(x + w, y + h);
+        ctx.lineTo(x, y + h);
+        ctx.closePath();
+        ctx.moveTo(x + w * 0.7, y);
+        ctx.lineTo(x + w * 0.7, y + h * 0.25);
+        ctx.lineTo(x + w, y + h * 0.25);
+        break;
+      case 'cloud': {
+        const cx = x + w / 2, cy = y + h / 2;
+        const r = Math.min(w, h) * 0.35;
+        const count = 8;
+        ctx.moveTo(cx + r * Math.cos(0), cy + r * Math.sin(0));
+        for (let i = 0; i < count; i++) {
+          const angle = (i / count) * Math.PI * 2;
+          const rr = r + ((i % 3 === 0) ? r * 0.3 : 0);
+          ctx.lineTo(cx + rr * Math.cos(angle), cy + rr * Math.sin(angle));
+        }
+        ctx.closePath();
+        break;
+      }
+    }
+  }
+
+  wrapText(ctx, text, cx, cy, maxWidth, lineHeight) {
+    const lines = text.split('\n');
+    const totalHeight = lines.length * lineHeight;
+    let startY = cy - totalHeight / 2 + lineHeight / 2;
+
+    for (const line of lines) {
+      // 如果单行太长，自动换行
+      if (ctx.measureText(line).width > maxWidth && line.length > 1) {
+        let currentLine = '';
+        for (const char of line) {
+          if (ctx.measureText(currentLine + char).width > maxWidth) {
+            ctx.fillText(currentLine, cx, startY);
+            startY += lineHeight;
+            currentLine = char;
+          } else {
+            currentLine += char;
+          }
+        }
+        if (currentLine) ctx.fillText(currentLine, cx, startY);
+      } else {
+        ctx.fillText(line, cx, startY);
+      }
+      startY += lineHeight;
+    }
+  }
+
+  drawResizeHandles(shape) {
+    const ctx = this.ctx;
+    const { x, y, w, h } = shape;
+    const handles = [
+      { x, y }, { x: x + w / 2, y }, { x: x + w, y },
+      { x, y: y + h / 2 }, { x: x + w, y: y + h / 2 },
+      { x, y: y + h }, { x: x + w / 2, y: y + h }, { x: x + w, y: y + h },
+    ];
+    const size = 6 / this.zoom;
+
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#6c8cff';
+    ctx.lineWidth = 1.5 / this.zoom;
+
+    for (const h of handles) {
+      ctx.beginPath();
+      ctx.rect(h.x - size / 2, h.y - size / 2, size, size);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  drawSnapPoints(shape) {
+    const ctx = this.ctx;
+    const points = this.getShapeConnectionPoints(shape);
+    const r = 4 / this.zoom;
+
+    for (const pt of points) {
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = '#6c8cff';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1 / this.zoom;
+      ctx.stroke();
+    }
+  }
+
+  drawConnection(conn) {
+    const ctx = this.ctx;
+    const fromShape = this.shapes.find(s => s.id === conn.fromId);
+    const toShape = this.shapes.find(s => s.id === conn.toId);
+    if (!fromShape || !toShape) return;
+
+    const fromPt = this.getConnectionPoint(fromShape, conn.fromSide);
+    const toPt = this.getConnectionPoint(toShape, conn.toSide);
+
+    const isSelected = conn.id === this.selectedConnectionId;
+
+    ctx.save();
+    ctx.strokeStyle = isSelected ? '#fff' : conn.color;
+    ctx.fillStyle = conn.color;
+    ctx.lineWidth = conn.lineWidth;
+    if (conn.dashed) ctx.setLineDash([8, 4]);
+
+    // 连线路径：流程图用直角折线，模块图用贝塞尔曲线
+    ctx.beginPath();
+    ctx.moveTo(fromPt.x, fromPt.y);
+
+    if (this.diagramType === 'flowchart') {
+      // 流程图：直角折线（正交路由）
+      const midX = (fromPt.x + toPt.x) / 2;
+      const midY = (fromPt.y + toPt.y) / 2;
+      if (conn.fromSide === 'right' || conn.fromSide === 'left') {
+        const mx = fromPt.x + (toPt.x - fromPt.x) / 2;
+        ctx.lineTo(mx, fromPt.y);
+        ctx.lineTo(mx, toPt.y);
+      } else {
+        const my = fromPt.y + (toPt.y - fromPt.y) / 2;
+        ctx.lineTo(fromPt.x, my);
+        ctx.lineTo(toPt.x, my);
+      }
+      ctx.lineTo(toPt.x, toPt.y);
+    } else {
+      // 模块图：平滑贝塞尔曲线
+      const cp = 0.4; // 弯曲程度
+      const dx = toPt.x - fromPt.x;
+      const dy = toPt.y - fromPt.y;
+      const cp1x = fromPt.x + dx * cp;
+      const cp1y = fromPt.y + dy * cp;
+      const cp2x = fromPt.x + dx * (1 - cp);
+      const cp2y = fromPt.y + dy * (1 - cp);
+      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, toPt.x, toPt.y);
+    }
+
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 箭头
+    this.drawArrow(ctx, toPt, conn.toSide);
+
+    // 标签
+    if (conn.label) {
+      const labelX = (fromPt.x + toPt.x) / 2;
+      const labelY = (fromPt.y + toPt.y) / 2 - 8;
+      ctx.fillStyle = '#e0e0e0';
+      ctx.font = '12px "Segoe UI", "PingFang SC", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(conn.label, labelX, labelY);
+    }
+
+    ctx.restore();
+  }
+
+  drawArrow(ctx, point, side) {
+    const size = 10;
+    ctx.beginPath();
+    switch (side) {
+      case 'left':
+        ctx.moveTo(point.x - size, point.y - size / 2);
+        ctx.lineTo(point.x, point.y);
+        ctx.lineTo(point.x - size, point.y + size / 2);
+        break;
+      case 'right':
+        ctx.moveTo(point.x + size, point.y - size / 2);
+        ctx.lineTo(point.x, point.y);
+        ctx.lineTo(point.x + size, point.y + size / 2);
+        break;
+      case 'top':
+        ctx.moveTo(point.x - size / 2, point.y - size);
+        ctx.lineTo(point.x, point.y);
+        ctx.lineTo(point.x + size / 2, point.y - size);
+        break;
+      case 'bottom':
+        ctx.moveTo(point.x - size / 2, point.y + size);
+        ctx.lineTo(point.x, point.y);
+        ctx.lineTo(point.x + size / 2, point.y + size);
+        break;
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  drawTempConnection() {
+    const ctx = this.ctx;
+    const fromShape = this.shapes.find(s => s.id === this.connecting.fromId);
+    if (!fromShape) return;
+
+    const fromPt = this.getConnectionPoint(fromShape, this.connecting.fromSide);
+    const toPt = { x: this.connecting.tempX, y: this.connecting.tempY };
+
+    ctx.save();
+    ctx.strokeStyle = '#6c8cff';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 3]);
+    ctx.beginPath();
+    ctx.moveTo(fromPt.x, fromPt.y);
+    ctx.lineTo(toPt.x, toPt.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 箭头
+    ctx.fillStyle = '#6c8cff';
+    ctx.beginPath();
+    ctx.arc(toPt.x, toPt.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ========== 事件处理 ==========
+  bindEvents() {
+    // Canvas鼠标事件
+    this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
+    this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
+    this.canvas.addEventListener('mouseup', (e) => this.onMouseUp(e));
+    this.canvas.addEventListener('dblclick', (e) => this.onDoubleClick(e));
+    this.canvas.addEventListener('wheel', (e) => this.onWheel(e));
+    this.canvas.addEventListener('contextmenu', (e) => this.onContextMenu(e));
+
+    // 拖放形状到画布
+    this.canvas.addEventListener('dragover', (e) => e.preventDefault());
+    this.canvas.addEventListener('drop', (e) => this.onDrop(e));
+
+    // 触摸事件
+    this.canvas.addEventListener('touchstart', (e) => this.onTouchStart(e));
+    this.canvas.addEventListener('touchmove', (e) => this.onTouchMove(e));
+    this.canvas.addEventListener('touchend', (e) => this.onTouchEnd(e));
+
+    // 全局键盘事件
+    document.addEventListener('keydown', (e) => this.onKeyDown(e));
+
+    // 全局点击（关闭菜单）
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('contextMenu');
+      if (!menu.contains(e.target)) menu.style.display = 'none';
+    });
+
+    // 窗口大小变化
+    window.addEventListener('resize', () => this.resizeCanvas());
+
+    // 工具栏按钮
+    this.bindToolbarEvents();
+    this.bindShapePanelEvents();
+    this.bindContextMenuEvents();
+    this.bindTextEditorEvents();
+  }
+
+  bindToolbarEvents() {
+    // 模式切换
+    document.getElementById('mode-flowchart').addEventListener('click', () => this.setDiagramType('flowchart'));
+    document.getElementById('mode-module').addEventListener('click', () => this.setDiagramType('module'));
+
+    // 工具模式
+    document.getElementById('btn-select').addEventListener('click', () => this.setMode('select'));
+    document.getElementById('btn-connect').addEventListener('click', () => this.setMode('connect'));
+    document.getElementById('btn-pan').addEventListener('click', () => this.setMode('pan'));
+
+    // 撤销/重做
+    document.getElementById('btn-undo').addEventListener('click', () => this.undo());
+    document.getElementById('btn-redo').addEventListener('click', () => this.redo());
+
+    // 删除/复制/清空
+    document.getElementById('btn-delete').addEventListener('click', () => this.deleteSelected());
+    document.getElementById('btn-duplicate').addEventListener('click', () => this.duplicateSelected());
+    document.getElementById('btn-clear').addEventListener('click', () => this.clearCanvas());
+
+    // 导出
+    document.getElementById('btn-export-png').addEventListener('click', () => this.exportPNG());
+    document.getElementById('btn-export-svg').addEventListener('click', () => this.exportSVG());
+
+    // 缩放
+    document.getElementById('btn-zoom-in').addEventListener('click', () => this.zoomIn());
+    document.getElementById('btn-zoom-out').addEventListener('click', () => this.zoomOut());
+    document.getElementById('btn-zoom-fit').addEventListener('click', () => this.zoomFit());
+
+    // 颜色
+    document.getElementById('color-fill').addEventListener('input', (e) => this.updateSelectedColor('fill', e.target.value));
+    document.getElementById('color-stroke').addEventListener('input', (e) => this.updateSelectedColor('stroke', e.target.value));
+    document.getElementById('color-text').addEventListener('input', (e) => this.updateSelectedColor('textColor', e.target.value));
+  }
+
+  bindShapePanelEvents() {
+    // 形状点击
+    document.querySelectorAll('.shape-item[data-shape]').forEach(item => {
+      const shapeType = item.dataset.shape;
+      item.addEventListener('click', (e) => {
+        if (shapeType === 'connector' || shapeType === 'connector-dashed') return;
+        this.setMode('select');
+        // 在画布中央放置形状
+        const cx = (this.canvasWidth / 2 - this.panX) / this.zoom;
+        const cy = (this.canvasHeight / 2 - this.panY) / this.zoom;
+        const offset = this.shapes.length * 25; // 偏移避免重叠
+        this.addShape(shapeType, cx + offset % 200, cy + offset % 150);
+      });
+
+      // 拖拽支持
+      item.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('shapeType', shapeType);
+        e.dataTransfer.effectAllowed = 'copy';
+      });
+    });
+
+    // 连线类型
+    document.getElementById('shape-connector').addEventListener('click', () => {
+      this.connectionLineType = 'solid';
+      this.setMode('connect');
+    });
+    document.getElementById('shape-connector-dashed').addEventListener('click', () => {
+      this.connectionLineType = 'dashed';
+      this.setMode('connect');
+    });
+
+    // 预设模板
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => this.loadPreset(btn.dataset.preset));
+    });
+  }
+
+  bindContextMenuEvents() {
+    const menu = document.getElementById('contextMenu');
+    menu.querySelectorAll('.menu-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const action = item.dataset.action;
+        this.handleContextAction(action);
+        menu.style.display = 'none';
+      });
+    });
+  }
+
+  bindTextEditorEvents() {
+    const textarea = document.getElementById('textEditor');
+    textarea.addEventListener('blur', () => this.commitTextEdit());
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        this.commitTextEdit();
+      }
+      if (e.key === 'Escape') {
+        this.cancelTextEdit();
+      }
+    });
+    // 自动调整高度
+    textarea.addEventListener('input', () => {
+      textarea.style.height = 'auto';
+      textarea.style.height = textarea.scrollHeight + 'px';
+    });
+  }
+
+  onMouseDown(e) {
+    if (e.button === 1 || (e.button === 0 && e.altKey)) {
+      // 中键或Alt+左键=平移
+      this.startPan(e);
+      return;
+    }
+    if (e.button !== 0) return;
+
+    const pos = this.getMousePos(e);
+    const world = this.screenToWorld(pos.x, pos.y);
+
+    // 空格键+拖拽 = 平移
+    if (this.spacePressed) {
+      this.startPan(e);
+      return;
+    }
+
+    if (this.mode === 'pan') {
+      this.startPan(e);
+      return;
+    }
+
+    if (this.mode === 'connect') {
+      this.startConnection(world);
+      return;
+    }
+
+    // Select模式
+    // 检查调整大小手柄
+    if (this.selectedShapeId) {
+      const handle = this.getResizeHandleAt(world);
+      if (handle) {
+        this.resizing = { shapeId: this.selectedShapeId, handle: handle.handle };
+        this.dragStartX = world.x;
+        this.dragStartY = world.y;
+        this.resizingStartShape = { ...this.shapes.find(s => s.id === this.selectedShapeId) };
+        return;
+      }
+    }
+
+    // 检查是否点击了形状
+    const shape = this.getShapeAt(world.x, world.y);
+    if (shape) {
+      this.selectShape(shape.id);
+      this.dragging = true;
+      this.dragStartX = world.x;
+      this.dragStartY = world.y;
+      this.dragOffsetX = world.x - shape.x;
+      this.dragOffsetY = world.y - shape.y;
+      this.dragStartShapePos = { x: shape.x, y: shape.y };
+      this.canvas.style.cursor = 'grabbing';
+      return;
+    }
+
+    // 检查是否点击了连线
+    const conn = this.getConnectionAt(world.x, world.y);
+    if (conn) {
+      this.selectConnection(conn.id);
+      return;
+    }
+
+    // 点击空白区域
+    this.selectShape(null);
+    this.selectConnection(null);
+    this.dragging = false;
+  }
+
+  onMouseMove(e) {
+    const pos = this.getMousePos(e);
+    const world = this.screenToWorld(pos.x, pos.y);
+
+    // 平移
+    if (this.isPanning) {
+      this.panX = this.panStartPanX + (pos.x - this.panStartX);
+      this.panY = this.panStartPanY + (pos.y - this.panStartY);
+      this.render();
+      return;
+    }
+
+    // 调整大小
+    if (this.resizing) {
+      this.resizeShape(world);
+      return;
+    }
+
+    // 拖拽形状
+    if (this.dragging && this.selectedShapeId) {
+      const shape = this.shapes.find(s => s.id === this.selectedShapeId);
+      if (shape) {
+        shape.x = world.x - this.dragOffsetX;
+        shape.y = world.y - this.dragOffsetY;
+        // 网格吸附
+        if (!e.shiftKey) {
+          const gridSize = 15;
+          shape.x = Math.round(shape.x / gridSize) * gridSize;
+          shape.y = Math.round(shape.y / gridSize) * gridSize;
+        }
+        this.render();
+      }
+      return;
+    }
+
+    // 连线模式 - 更新临时连线
+    if (this.connecting) {
+      this.connecting.tempX = world.x;
+      this.connecting.tempY = world.y;
+
+      // 检测悬停在哪个形状的吸附点上
+      const hoveredShape = this.getShapeAt(world.x, world.y);
+      if (hoveredShape && hoveredShape.id !== this.connecting.fromId) {
+        const pts = this.getShapeConnectionPoints(hoveredShape);
+        let closest = null, minDist = 15 / this.zoom;
+        for (const pt of pts) {
+          const dist = Math.hypot(world.x - pt.x, world.y - pt.y);
+          if (dist < minDist) { minDist = dist; closest = pt; }
+        }
+        if (closest) {
+          this.connecting.tempX = closest.x;
+          this.connecting.tempY = closest.y;
+          this.connecting.snapShapeId = hoveredShape.id;
+          this.connecting.snapSide = closest.side;
+        } else {
+          this.connecting.snapShapeId = null;
+        }
+      } else {
+        this.connecting.snapShapeId = null;
+      }
+
+      this.render();
+      return;
+    }
+
+    // 更新光标
+    if (this.mode === 'connect') {
+      const hoveredShape = this.getShapeAt(world.x, world.y);
+      this.canvas.style.cursor = hoveredShape ? 'crosshair' : 'crosshair';
+    } else if (this.mode === 'pan' || this.spacePressed) {
+      this.canvas.style.cursor = 'grab';
+    } else {
+      const shape = this.getShapeAt(world.x, world.y);
+      if (shape) {
+        this.canvas.style.cursor = 'move';
+      } else {
+        const conn = this.getConnectionAt(world.x, world.y);
+        this.canvas.style.cursor = conn ? 'pointer' : 'default';
+      }
+    }
+  }
+
+  onMouseUp(e) {
+    // 结束平移
+    if (this.isPanning) {
+      this.isPanning = false;
+      this.canvas.style.cursor = this.mode === 'pan' ? 'grab' : 'default';
+      return;
+    }
+
+    // 结束调整大小
+    if (this.resizing) {
+      const shape = this.shapes.find(s => s.id === this.resizing.shapeId);
+      if (shape && (shape.x !== this.resizingStartShape.x || shape.y !== this.resizingStartShape.y ||
+          shape.w !== this.resizingStartShape.w || shape.h !== this.resizingStartShape.h)) {
+        this.saveState();
+      }
+      this.resizing = null;
+      this.render();
+      return;
+    }
+
+    // 结束拖拽
+    if (this.dragging) {
+      this.dragging = false;
+      this.canvas.style.cursor = 'default';
+      const shape = this.shapes.find(s => s.id === this.selectedShapeId);
+      if (shape && (shape.x !== this.dragStartShapePos.x || shape.y !== this.dragStartShapePos.y)) {
+        this.saveState();
+      }
+      return;
+    }
+
+    // 结束连线
+    if (this.connecting) {
+      if (this.connecting.snapShapeId) {
+        const dashed = this.connectionLineType === 'dashed';
+        this.addConnection(this.connecting.fromId, this.connecting.snapShapeId, dashed);
+      }
+      this.connecting = null;
+      this.render();
+      return;
+    }
+  }
+
+  onDoubleClick(e) {
+    const pos = this.getMousePos(e);
+    const world = this.screenToWorld(pos.x, pos.y);
+    const shape = this.getShapeAt(world.x, world.y);
+    if (shape) {
+      this.startTextEdit(shape);
+    }
+  }
+
+  onWheel(e) {
+    e.preventDefault();
+    const pos = this.getMousePos(e);
+    const worldBefore = this.screenToWorld(pos.x, pos.y);
+
+    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoom * zoomFactor));
+
+    // 以鼠标位置为中心缩放
+    this.panX = pos.x - worldBefore.x * newZoom;
+    this.panY = pos.y - worldBefore.y * newZoom;
+    this.zoom = newZoom;
+
+    this.render();
+  }
+
+  onContextMenu(e) {
+    e.preventDefault();
+    const pos = this.getMousePos(e);
+    const world = this.screenToWorld(pos.x, pos.y);
+    const shape = this.getShapeAt(world.x, world.y);
+
+    if (shape) {
+      this.selectShape(shape.id);
+      this.contextMenuShape = shape;
+
+      const menu = document.getElementById('contextMenu');
+      menu.style.display = 'block';
+      menu.style.left = e.clientX + 'px';
+      menu.style.top = e.clientY + 'px';
+
+      // 保持在视口内
+      const menuRect = menu.getBoundingClientRect();
+      if (menuRect.right > window.innerWidth) menu.style.left = (e.clientX - menuRect.width) + 'px';
+      if (menuRect.bottom > window.innerHeight) menu.style.top = (e.clientY - menuRect.height) + 'px';
+    }
+  }
+
+  onDrop(e) {
+    e.preventDefault();
+    const shapeType = e.dataTransfer.getData('shapeType');
+    if (!shapeType || shapeType === 'connector' || shapeType === 'connector-dashed') return;
+
+    const rect = this.canvas.getBoundingClientRect();
+    const world = this.screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+    this.addShape(shapeType, world.x, world.y);
+  }
+
+  onTouchStart(e) {
+    if (e.touches.length === 2) {
+      // 双指缩放
+      this.touchStartDist = Math.hypot(
+        e.touches[1].clientX - e.touches[0].clientX,
+        e.touches[1].clientY - e.touches[0].clientY
+      );
+      this.touchStartZoom = this.zoom;
+    } else if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      const mouseEvent = new MouseEvent('mousedown', { clientX: touch.clientX, clientY: touch.clientY });
+      this.onMouseDown(mouseEvent);
+    }
+  }
+
+  onTouchMove(e) {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const dist = Math.hypot(
+        e.touches[1].clientX - e.touches[0].clientX,
+        e.touches[1].clientY - e.touches[0].clientY
+      );
+      const newZoom = this.touchStartZoom * (dist / this.touchStartDist);
+      this.zoom = Math.max(this.minZoom, Math.min(this.maxZoom, newZoom));
+      this.render();
+    } else if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      const mouseEvent = new MouseEvent('mousemove', { clientX: touch.clientX, clientY: touch.clientY });
+      this.onMouseMove(mouseEvent);
+    }
+  }
+
+  onTouchEnd(e) {
+    const mouseEvent = new MouseEvent('mouseup', {});
+    this.onMouseUp(mouseEvent);
+  }
+
+  onKeyDown(e) {
+    const ctrl = e.ctrlKey || e.metaKey;
+
+    if (ctrl && e.key === 'z') { e.preventDefault(); this.undo(); return; }
+    if (ctrl && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); this.redo(); return; }
+    if (ctrl && e.key === 'd') { e.preventDefault(); this.duplicateSelected(); return; }
+    if (ctrl && e.key === 'a') { e.preventDefault(); /* 可选：全选 */ return; }
+    if (ctrl && e.key === 's') { e.preventDefault(); this.exportPNG(); return; }
+
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (document.activeElement === document.getElementById('textEditor')) return;
+      e.preventDefault();
+      this.deleteSelected();
+      return;
+    }
+
+    if (e.key === 'Escape') {
+      if (this.editingShapeId !== null) { this.cancelTextEdit(); return; }
+      this.setMode('select');
+      this.selectShape(null);
+      this.selectConnection(null);
+      this.connecting = null;
+      this.render();
+      return;
+    }
+
+    // 工具快捷键
+    if (!e.ctrlKey && !e.metaKey) {
+      switch (e.key.toLowerCase()) {
+        case 'v': this.setMode('select'); break;
+        case 'l': this.setMode('connect'); break;
+        case 'h': this.setMode('pan'); break;
+        case 'f2':
+          if (this.selectedShapeId) {
+            const s = this.shapes.find(sh => sh.id === this.selectedShapeId);
+            if (s) this.startTextEdit(s);
+          }
+          break;
+        case ' ': e.preventDefault(); this.spacePressed = true; this.canvas.style.cursor = 'grab'; break;
+      }
+    }
+  }
+
+  // 键盘松开
+  keyUpHandler(e) {
+    if (e.key === ' ') {
+      this.spacePressed = false;
+      this.canvas.style.cursor = this.mode === 'pan' ? 'grab' : 'default';
+    }
+  }
+
+  startPan(e) {
+    const pos = this.getMousePos(e);
+    this.isPanning = true;
+    this.panStartX = pos.x;
+    this.panStartY = pos.y;
+    this.panStartPanX = this.panX;
+    this.panStartPanY = this.panY;
+    document.body.style.cursor = 'grabbing';
+  }
+
+  startConnection(world) {
+    const shape = this.getShapeAt(world.x, world.y);
+    if (shape) {
+      // 找到最近的连接点
+      const pts = this.getShapeConnectionPoints(shape);
+      let closest = pts[0], minDist = Infinity;
+      for (const pt of pts) {
+        const dist = Math.hypot(world.x - pt.x, world.y - pt.y);
+        if (dist < minDist) { minDist = dist; closest = pt; }
+      }
+      this.connecting = {
+        fromId: shape.id,
+        fromSide: closest.side,
+        tempX: world.x,
+        tempY: world.y,
+        snapShapeId: null,
+        snapSide: null,
+      };
+      this.render();
+    }
+  }
+
+  resizeShape(world) {
+    const shape = this.shapes.find(s => s.id === this.resizing.shapeId);
+    if (!shape) return;
+
+    const dx = world.x - this.dragStartX;
+    const dy = world.y - this.dragStartY;
+    const orig = this.resizingStartShape;
+
+    switch (this.resizing.handle) {
+      case 'se':
+        shape.w = Math.max(40, orig.w + dx);
+        shape.h = Math.max(30, orig.h + dy);
+        break;
+      case 'e':
+        shape.w = Math.max(40, orig.w + dx);
+        break;
+      case 's':
+        shape.h = Math.max(30, orig.h + dy);
+        break;
+      case 'n':
+        shape.y = orig.y + dy;
+        shape.h = Math.max(30, orig.h - dy);
+        break;
+      case 'w':
+        shape.x = orig.x + dx;
+        shape.w = Math.max(40, orig.w - dx);
+        break;
+      case 'ne':
+        shape.y = orig.y + dy;
+        shape.h = Math.max(30, orig.h - dy);
+        shape.w = Math.max(40, orig.w + dx);
+        break;
+      case 'nw':
+        shape.x = orig.x + dx;
+        shape.w = Math.max(40, orig.w - dx);
+        shape.y = orig.y + dy;
+        shape.h = Math.max(30, orig.h - dy);
+        break;
+      case 'sw':
+        shape.x = orig.x + dx;
+        shape.w = Math.max(40, orig.w - dx);
+        shape.h = Math.max(30, orig.h + dy);
+        break;
+    }
+    this.render();
+  }
+
+  getResizeHandleAt(world) {
+    if (!this.selectedShapeId) return null;
+    const shape = this.shapes.find(s => s.id === this.selectedShapeId);
+    if (!shape) return null;
+
+    const { x, y, w, h } = shape;
+    const threshold = 8 / this.zoom;
+    const handles = [
+      { handle: 'nw', x, y },
+      { handle: 'n', x: x + w / 2, y },
+      { handle: 'ne', x: x + w, y },
+      { handle: 'w', x, y: y + h / 2 },
+      { handle: 'e', x: x + w, y: y + h / 2 },
+      { handle: 'sw', x, y: y + h },
+      { handle: 's', x: x + w / 2, y: y + h },
+      { handle: 'se', x: x + w, y: y + h },
+    ];
+
+    for (const h of handles) {
+      if (Math.abs(world.x - h.x) <= threshold && Math.abs(world.y - h.y) <= threshold) return h;
+    }
+    return null;
+  }
+
+  // ========== 选择操作 ==========
+  selectShape(id) {
+    this.selectedShapeId = id;
+    this.selectedConnectionId = null;
+
+    // 更新颜色选择器
+    if (id) {
+      const shape = this.shapes.find(s => s.id === id);
+      if (shape) {
+        document.getElementById('color-fill').value = shape.fill;
+        document.getElementById('color-stroke').value = shape.stroke;
+        document.getElementById('color-text').value = shape.textColor;
+      }
+    }
+
+    this.render();
+  }
+
+  selectConnection(id) {
+    this.selectedConnectionId = id;
+    this.selectedShapeId = null;
+    this.render();
+  }
+
+  setMode(mode) {
+    this.mode = mode;
+    this.connecting = null;
+    this.selectedShapeId = null;
+    this.selectedConnectionId = null;
+
+    document.querySelectorAll('#toolbar button').forEach(b => b.classList.remove('active'));
+    document.getElementById('btn-' + mode)?.classList.add('active');
+
+    this.canvas.style.cursor = mode === 'pan' ? 'grab' : mode === 'connect' ? 'crosshair' : 'default';
+    this.render();
+  }
+
+  setDiagramType(type) {
+    this.diagramType = type;
+    document.getElementById('mode-flowchart').classList.toggle('active', type === 'flowchart');
+    document.getElementById('mode-module').classList.toggle('active', type === 'module');
+
+    // 切换形状面板
+    const flowShapes = document.getElementById('flowchart-shapes');
+    const modShapes = document.getElementById('module-shapes');
+    const flowPresets = document.getElementById('flowchart-presets');
+    const modPresets = document.getElementById('module-presets');
+
+    if (type === 'flowchart') {
+      flowShapes.style.display = '';
+      modShapes.style.display = 'none';
+      flowPresets.style.display = '';
+      modPresets.style.display = 'none';
+      document.querySelector('.toolbar .diagram-type-tabs').style.borderColor = '#4caf50';
+    } else {
+      flowShapes.style.display = 'none';
+      modShapes.style.display = '';
+      flowPresets.style.display = 'none';
+      modPresets.style.display = '';
+      document.querySelector('.toolbar .diagram-type-tabs').style.borderColor = '#1976d2';
+    }
+
+    this.showToast(type === 'flowchart' ? '🔄 系统流程图模式 — 按步骤描述业务流程' : '📦 功能模块图模式 — 描述系统架构与模块关系');
+  }
+
+  // ========== 文本编辑 ==========
+  startTextEdit(shape) {
+    this.editingShapeId = shape.id;
+    const overlay = document.getElementById('textEditorOverlay');
+    const textarea = document.getElementById('textEditor');
+
+    const screen = this.worldToScreen(shape.x + shape.w / 2, shape.y + shape.h / 2);
+    const width = shape.w * this.zoom;
+
+    overlay.style.display = 'block';
+    overlay.style.left = (screen.x - width / 2) + 'px';
+    overlay.style.top = (screen.y - shape.h * this.zoom / 2) + 'px';
+
+    textarea.value = shape.text;
+    textarea.style.width = width + 'px';
+    textarea.style.minHeight = (shape.h * this.zoom) + 'px';
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
+    textarea.style.textAlign = 'center';
+    textarea.style.fontSize = (shape.fontSize * this.zoom) + 'px';
+    textarea.style.color = shape.textColor;
+    textarea.style.background = shape.fill;
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.select();
+    }, 50);
+  }
+
+  commitTextEdit() {
+    if (this.editingShapeId === null) return;
+    const shape = this.shapes.find(s => s.id === this.editingShapeId);
+    const textarea = document.getElementById('textEditor');
+    if (shape && textarea.value !== shape.text) {
+      shape.text = textarea.value;
+      this.saveState();
+    }
+    this.finishTextEdit();
+  }
+
+  cancelTextEdit() {
+    this.finishTextEdit();
+  }
+
+  finishTextEdit() {
+    this.editingShapeId = null;
+    document.getElementById('textEditorOverlay').style.display = 'none';
+    this.render();
+  }
+
+  // ========== 删除/复制/清空 ==========
+  deleteSelected() {
+    if (this.selectedShapeId) {
+      const id = this.selectedShapeId;
+      this.shapes = this.shapes.filter(s => s.id !== id);
+      this.connections = this.connections.filter(c => c.fromId !== id && c.toId !== id);
+      this.selectShape(null);
+      this.saveState();
+      this.render();
+    } else if (this.selectedConnectionId) {
+      this.connections = this.connections.filter(c => c.id !== this.selectedConnectionId);
+      this.selectConnection(null);
+      this.saveState();
+      this.render();
+    }
+  }
+
+  duplicateSelected() {
+    if (!this.selectedShapeId) return;
+    const orig = this.shapes.find(s => s.id === this.selectedShapeId);
+    if (!orig) return;
+
+    const clone = {
+      ...orig,
+      id: this.genId(),
+      x: orig.x + 30,
+      y: orig.y + 30,
+      zIndex: this.shapes.length,
+    };
+    this.shapes.push(clone);
+    this.selectShape(clone.id);
+    this.saveState();
+    this.render();
+  }
+
+  clearCanvas() {
+    if (this.shapes.length === 0 && this.connections.length === 0) return;
+    if (!confirm('确定要清空画布吗？此操作可以撤销。')) return;
+    this.shapes = [];
+    this.connections = [];
+    this.selectShape(null);
+    this.selectConnection(null);
+    this.saveState();
+    this.render();
+  }
+
+  // ========== 撤销/重做 ==========
+  saveState() {
+    const state = {
+      shapes: JSON.parse(JSON.stringify(this.shapes)),
+      connections: JSON.parse(JSON.stringify(this.connections)),
+    };
+    this.undoStack.push(state);
+    if (this.undoStack.length > this.maxUndo) this.undoStack.shift();
+    this.redoStack = [];
+  }
+
+  undo() {
+    if (this.undoStack.length <= 1) return;
+    const current = this.undoStack.pop();
+    this.redoStack.push(current);
+    const prev = this.undoStack[this.undoStack.length - 1];
+    this.shapes = JSON.parse(JSON.stringify(prev.shapes));
+    this.connections = JSON.parse(JSON.stringify(prev.connections));
+    this.selectShape(null);
+    this.selectConnection(null);
+    this.render();
+  }
+
+  redo() {
+    if (this.redoStack.length === 0) return;
+    const next = this.redoStack.pop();
+    this.undoStack.push(next);
+    this.shapes = JSON.parse(JSON.stringify(next.shapes));
+    this.connections = JSON.parse(JSON.stringify(next.connections));
+    this.selectShape(null);
+    this.selectConnection(null);
+    this.render();
+  }
+
+  // ========== 颜色 ==========
+  updateSelectedColor(prop, value) {
+    if (!this.selectedShapeId) {
+      // 更新默认颜色
+      this['default' + prop.charAt(0).toUpperCase() + prop.slice(1)] = value;
+      return;
+    }
+    const shape = this.shapes.find(s => s.id === this.selectedShapeId);
+    if (shape) {
+      shape[prop] = value;
+      this.render();
+      // 延迟保存状态（避免拖动颜色选择器时频繁保存）
+      clearTimeout(this._colorSaveTimeout);
+      this._colorSaveTimeout = setTimeout(() => this.saveState(), 300);
+    }
+  }
+
+  // ========== 上下文菜单操作 ==========
+  handleContextAction(action) {
+    const shape = this.contextMenuShape;
+    if (!shape) return;
+
+    switch (action) {
+      case 'edit': this.startTextEdit(shape); break;
+      case 'duplicate': this.duplicateSelected(); break;
+      case 'delete': this.deleteSelected(); break;
+      case 'bringToFront':
+        shape.zIndex = Math.max(...this.shapes.map(s => s.zIndex), 0) + 1;
+        this.saveState();
+        this.render();
+        break;
+      case 'sendToBack':
+        shape.zIndex = Math.min(...this.shapes.map(s => s.zIndex), 0) - 1;
+        this.saveState();
+        this.render();
+        break;
+      case 'changeFill':
+        document.getElementById('color-fill').click();
+        break;
+      case 'changeStroke':
+        document.getElementById('color-stroke').click();
+        break;
+    }
+  }
+
+  // ========== 缩放 ==========
+  zoomIn() {
+    const cx = this.canvasWidth / 2;
+    const cy = this.canvasHeight / 2;
+    const world = this.screenToWorld(cx, cy);
+    this.zoom = Math.min(this.maxZoom, this.zoom * 1.2);
+    this.panX = cx - world.x * this.zoom;
+    this.panY = cy - world.y * this.zoom;
+    this.render();
+  }
+
+  zoomOut() {
+    const cx = this.canvasWidth / 2;
+    const cy = this.canvasHeight / 2;
+    const world = this.screenToWorld(cx, cy);
+    this.zoom = Math.max(this.minZoom, this.zoom / 1.2);
+    this.panX = cx - world.x * this.zoom;
+    this.panY = cy - world.y * this.zoom;
+    this.render();
+  }
+
+  zoomFit() {
+    if (this.shapes.length === 0) {
+      this.zoom = 1;
+      this.panX = 0;
+      this.panY = 0;
+      this.render();
+      return;
+    }
+
+    const padding = 60;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const s of this.shapes) {
+      minX = Math.min(minX, s.x);
+      minY = Math.min(minY, s.y);
+      maxX = Math.max(maxX, s.x + s.w);
+      maxY = Math.max(maxY, s.y + s.h);
+    }
+
+    const contentW = maxX - minX;
+    const contentH = maxY - minY;
+    const zoomX = (this.canvasWidth - padding * 2) / contentW;
+    const zoomY = (this.canvasHeight - padding * 2) / contentH;
+    this.zoom = Math.min(zoomX, zoomY, 2);
+    this.panX = (this.canvasWidth - contentW * this.zoom) / 2 - minX * this.zoom;
+    this.panY = (this.canvasHeight - contentH * this.zoom) / 2 - minY * this.zoom;
+    this.render();
+  }
+
+  // ========== 导出 ==========
+  exportPNG() {
+    // 临时移除选中高亮
+    const prevSelected = this.selectedShapeId;
+    this.selectedShapeId = null;
+    this.selectedConnectionId = null;
+    this.render();
+
+    // 计算内容边界
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    if (this.shapes.length > 0) {
+      for (const s of this.shapes) {
+        minX = Math.min(minX, s.x - 10);
+        minY = Math.min(minY, s.y - 10);
+        maxX = Math.max(maxX, s.x + s.w + 10);
+        maxY = Math.max(maxY, s.y + s.h + 10);
+      }
+    } else {
+      minX = 0; minY = 0; maxX = this.canvasWidth; maxY = this.canvasHeight;
+    }
+
+    const w = maxX - minX;
+    const h = maxY - minY;
+
+    // 创建离屏canvas
+    const offscreen = document.createElement('canvas');
+    offscreen.width = w * 2;
+    offscreen.height = h * 2;
+    const octx = offscreen.getContext('2d');
+    octx.scale(2, 2);
+    octx.fillStyle = '#ffffff';
+    octx.fillRect(0, 0, w, h);
+
+    // 重绘到离屏canvas
+    octx.translate(-minX, -minY);
+    for (const conn of this.connections) {
+      octx.save();
+      octx.strokeStyle = conn.color;
+      octx.fillStyle = conn.color;
+      octx.lineWidth = conn.lineWidth;
+      if (conn.dashed) octx.setLineDash([8, 4]);
+
+      const fromShape = this.shapes.find(s => s.id === conn.fromId);
+      const toShape = this.shapes.find(s => s.id === conn.toId);
+      if (fromShape && toShape) {
+        const fromPt = this.getConnectionPoint(fromShape, conn.fromSide);
+        const toPt = this.getConnectionPoint(toShape, conn.toSide);
+        const midX = (fromPt.x + toPt.x) / 2;
+        octx.beginPath();
+        octx.moveTo(fromPt.x, fromPt.y);
+        if (this.diagramType === 'flowchart') {
+          if (conn.fromSide === 'right' || conn.fromSide === 'left') {
+            const mx = fromPt.x + (toPt.x - fromPt.x) / 2;
+            octx.lineTo(mx, fromPt.y); octx.lineTo(mx, toPt.y);
+          } else {
+            const my = fromPt.y + (toPt.y - fromPt.y) / 2;
+            octx.lineTo(fromPt.x, my); octx.lineTo(toPt.x, my);
+          }
+          octx.lineTo(toPt.x, toPt.y);
+        } else {
+          const dx = toPt.x - fromPt.x, dy = toPt.y - fromPt.y, cp = 0.4;
+          octx.bezierCurveTo(fromPt.x+dx*cp, fromPt.y+dy*cp, fromPt.x+dx*(1-cp), fromPt.y+dy*(1-cp), toPt.x, toPt.y);
+        }
+        octx.stroke();
+        octx.setLineDash([]);
+        // 用临时方式画箭头
+        const tempCtx = octx;
+        this.drawArrowWithCtx(tempCtx, toPt, conn.toSide);
+      }
+      octx.restore();
+    }
+
+    for (const shape of this.shapes) {
+      octx.save();
+      octx.fillStyle = shape.fill;
+      octx.strokeStyle = shape.stroke;
+      octx.lineWidth = 1.5;
+      this.drawShapePathWithCtx(octx, shape);
+      octx.fill();
+      octx.stroke();
+
+      octx.fillStyle = shape.textColor;
+      octx.font = `${shape.fontSize}px "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif`;
+      octx.textAlign = 'center';
+      octx.textBaseline = 'middle';
+      this.wrapTextWithCtx(octx, shape.text, shape.x + shape.w / 2, shape.y + shape.h / 2, shape.w - 16, shape.fontSize + 4);
+      octx.restore();
+    }
+
+    // 恢复选中状态
+    this.selectedShapeId = prevSelected;
+    this.render();
+
+    // 下载
+    offscreen.toBlob(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'diagram-' + new Date().toISOString().slice(0, 10) + '.png';
+      a.click();
+      URL.revokeObjectURL(url);
+      this.showToast('PNG导出成功！');
+    });
+  }
+
+  drawArrowWithCtx(ctx, point, side) {
+    const size = 10;
+    ctx.beginPath();
+    switch (side) {
+      case 'left': ctx.moveTo(point.x - size, point.y - size / 2); ctx.lineTo(point.x, point.y); ctx.lineTo(point.x - size, point.y + size / 2); break;
+      case 'right': ctx.moveTo(point.x + size, point.y - size / 2); ctx.lineTo(point.x, point.y); ctx.lineTo(point.x + size, point.y + size / 2); break;
+      case 'top': ctx.moveTo(point.x - size / 2, point.y - size); ctx.lineTo(point.x, point.y); ctx.lineTo(point.x + size / 2, point.y - size); break;
+      case 'bottom': ctx.moveTo(point.x - size / 2, point.y + size); ctx.lineTo(point.x, point.y); ctx.lineTo(point.x + size / 2, point.y + size); break;
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  drawShapePathWithCtx(ctx, shape) {
+    const { x, y, w, h, type } = shape;
+    ctx.beginPath();
+    switch (type) {
+      case 'rect': ctx.roundRect(x, y, w, h, 4); break;
+      case 'rounded-rect': ctx.roundRect(x, y, w, h, h / 2); break;
+      case 'diamond': ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w, y + h / 2); ctx.lineTo(x + w / 2, y + h); ctx.lineTo(x, y + h / 2); ctx.closePath(); break;
+      case 'parallelogram': ctx.moveTo(x + w * 0.25, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w * 0.75, y + h); ctx.lineTo(x, y + h); ctx.closePath(); break;
+      case 'circle': ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2); break;
+      case 'cylinder': {
+        const rx = w / 2, ry = Math.min(h * 0.2, 14);
+        ctx.moveTo(x, y + ry); ctx.lineTo(x, y + h - ry);
+        ctx.ellipse(x + rx, y + h - ry, rx, ry, 0, 0, Math.PI);
+        ctx.lineTo(x + w, y + ry);
+        ctx.ellipse(x + rx, y + ry, rx, ry, 0, Math.PI, 0, true);
+        ctx.closePath();
+        break;
+      }
+      case 'document': ctx.moveTo(x, y); ctx.lineTo(x + w * 0.7, y); ctx.lineTo(x + w, y + h * 0.25); ctx.lineTo(x + w, y + h); ctx.lineTo(x, y + h); ctx.closePath(); break;
+      case 'cloud': {
+        const cx = x + w / 2, cy = y + h / 2; const r = Math.min(w, h) * 0.35;
+        ctx.moveTo(cx + r, cy);
+        for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; const rr = r + ((i % 3 === 0) ? r * 0.3 : 0); ctx.lineTo(cx + rr * Math.cos(a), cy + rr * Math.sin(a)); }
+        ctx.closePath();
+        break;
+      }
+    }
+  }
+
+  wrapTextWithCtx(ctx, text, cx, cy, maxWidth, lineHeight) {
+    const lines = text.split('\n');
+    let startY = cy - (lines.length * lineHeight) / 2 + lineHeight / 2;
+    for (const line of lines) {
+      ctx.fillText(line, cx, startY);
+      startY += lineHeight;
+    }
+  }
+
+  exportSVG() {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    if (this.shapes.length > 0) {
+      for (const s of this.shapes) {
+        minX = Math.min(minX, s.x - 10);
+        minY = Math.min(minY, s.y - 10);
+        maxX = Math.max(maxX, s.x + s.w + 10);
+        maxY = Math.max(maxY, s.y + s.h + 10);
+      }
+    } else {
+      minX = 0; minY = 0; maxX = this.canvasWidth; maxY = this.canvasHeight;
+    }
+
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${maxX - minX}" height="${maxY - minY}" viewBox="${minX} ${minY} ${maxX - minX} ${maxY - minY}">\n`;
+    svg += `<rect x="${minX}" y="${minY}" width="${maxX - minX}" height="${maxY - minY}" fill="#ffffff"/>\n`;
+
+    // 定义箭头标记
+    svg += `<defs>
+      <marker id="arrow-solid" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="#6c8cff"/>
+      </marker>
+      <marker id="arrow-dashed" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="#ffd43b"/>
+      </marker>
+    </defs>\n`;
+
+    // 连接线
+    for (const conn of this.connections) {
+      const fromShape = this.shapes.find(s => s.id === conn.fromId);
+      const toShape = this.shapes.find(s => s.id === conn.toId);
+      if (!fromShape || !toShape) continue;
+      const fromPt = this.getConnectionPoint(fromShape, conn.fromSide);
+      const toPt = this.getConnectionPoint(toShape, conn.toSide);
+      let d;
+      if (this.diagramType === 'flowchart') {
+        if (conn.fromSide === 'right' || conn.fromSide === 'left') {
+          const mx = fromPt.x + (toPt.x - fromPt.x) / 2;
+          d = `M${fromPt.x},${fromPt.y} L${mx},${fromPt.y} L${mx},${toPt.y} L${toPt.x},${toPt.y}`;
+        } else {
+          const my = fromPt.y + (toPt.y - fromPt.y) / 2;
+          d = `M${fromPt.x},${fromPt.y} L${fromPt.x},${my} L${toPt.x},${my} L${toPt.x},${toPt.y}`;
+        }
+      } else {
+        const dx = toPt.x - fromPt.x, dy = toPt.y - fromPt.y, cp = 0.4;
+        d = `M${fromPt.x},${fromPt.y} C${fromPt.x+dx*cp},${fromPt.y+dy*cp} ${fromPt.x+dx*(1-cp)},${fromPt.y+dy*(1-cp)} ${toPt.x},${toPt.y}`;
+      }
+      svg += `<path d="${d}" fill="none" stroke="${conn.color}" stroke-width="${conn.lineWidth}" ${conn.dashed ? 'stroke-dasharray="8,4"' : ''} marker-end="url(#${conn.dashed ? 'arrow-dashed' : 'arrow-solid'})"/>\n`;
+    }
+
+    // 形状
+    for (const shape of this.shapes) {
+      const { x, y, w, h, type, fill, stroke, text, textColor, fontSize } = shape;
+      let shapeSvg = '';
+      switch (type) {
+        case 'rect': shapeSvg = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4"/>`; break;
+        case 'rounded-rect': shapeSvg = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h/2}"/>`; break;
+        case 'diamond': shapeSvg = `<polygon points="${x+w/2},${y} ${x+w},${y+h/2} ${x+w/2},${y+h} ${x},${y+h/2}"/>`; break;
+        case 'parallelogram': shapeSvg = `<polygon points="${x+w*0.25},${y} ${x+w},${y} ${x+w*0.75},${y+h} ${x},${y+h}"/>`; break;
+        case 'circle': shapeSvg = `<ellipse cx="${x+w/2}" cy="${y+h/2}" rx="${w/2}" ry="${h/2}"/>`; break;
+        case 'cylinder':
+          shapeSvg = `<rect x="${x}" y="${y+h*0.2}" width="${w}" height="${h*0.6}" rx="${w/2}"/>
+            <ellipse cx="${x+w/2}" cy="${y+h*0.2}" rx="${w/2}" ry="${Math.min(h*0.2,14)}" fill="${fill}" stroke="${stroke}"/>
+            <ellipse cx="${x+w/2}" cy="${y+h*0.2}" rx="${w/2}" ry="${Math.min(h*0.2,14)}" fill="none" stroke="${stroke}" stroke-width="1.5"/>`;
+          break;
+        case 'document': shapeSvg = `<path d="M${x},${y} L${x+w*0.7},${y} L${x+w},${y+h*0.25} L${x+w},${y+h} L${x},${y+h} Z M${x+w*0.7},${y} L${x+w*0.7},${y+h*0.25} L${x+w},${y+h*0.25}" fill="${fill}" stroke="${stroke}"/>`; break;
+        case 'cloud': shapeSvg = `<rect x="${x+w*0.15}" y="${y+h*0.15}" width="${w*0.7}" height="${h*0.7}" rx="${Math.min(w,h)*0.3}"/>`; break;
+      }
+
+      if (type !== 'document' && type !== 'cylinder') {
+        shapeSvg = shapeSvg.replace('/>', ` fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>`);
+      }
+
+      svg += `<g>${shapeSvg}\n`;
+      const lines = text.split('\n');
+      const totalH = lines.length * (fontSize + 4);
+      let sy = y + h / 2 - totalH / 2 + fontSize;
+      for (const line of lines) {
+        svg += `<text x="${x + w / 2}" y="${sy}" fill="${textColor}" font-size="${fontSize}" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" text-anchor="middle">${this.escapeXml(line)}</text>\n`;
+        sy += fontSize + 4;
+      }
+      svg += `</g>\n`;
+    }
+
+    svg += '</svg>';
+
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'diagram-' + new Date().toISOString().slice(0, 10) + '.svg';
+    a.click();
+    URL.revokeObjectURL(url);
+    this.showToast('SVG导出成功！');
+  }
+
+  escapeXml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ========== 预设模板 ==========
+  loadPreset(preset) {
+    if (this.shapes.length > 0 || this.connections.length > 0) {
+      if (!confirm('加载模板将清空当前画布，确定继续吗？')) return;
+    }
+
+    this.shapes = [];
+    this.connections = [];
+    const startX = 100, startY = 80;
+
+    switch (preset) {
+      case 'simple-flow': {
+        const s1 = this.createShape('rounded-rect', startX, startY, '开始');
+        const s2 = this.createShape('rect', startX, startY + 120, '处理数据');
+        const s3 = this.createShape('diamond', startX, startY + 250, '是否通过?');
+        const s4 = this.createShape('rect', startX + 250, startY + 250, '异常处理');
+        const s5 = this.createShape('rounded-rect', startX, startY + 400, '结束');
+        this.shapes.push(s1, s2, s3, s4, s5);
+        this.addConnection(s1.id, s2.id);
+        this.addConnection(s2.id, s3.id);
+        this.addConnection(s3.id, s5.id);
+        this.connections[2].label = '是';
+        const c4 = this.addConnection(s3.id, s4.id);
+        if (c4) { c4.label = '否'; c4.fromSide = 'right'; c4.toSide = 'top'; }
+        this.addConnection(s4.id, s2.id);
+        this.connections[4].fromSide = 'bottom'; this.connections[4].toSide = 'left';
+        break;
+      }
+      case 'login-flow': {
+        const s1 = this.createShape('rounded-rect', startX, startY, '用户访问');
+        const s2 = this.createShape('rect', startX, startY + 120, '输入账号密码');
+        const s3 = this.createShape('diamond', startX, startY + 230, '验证通过?');
+        const s4 = this.createShape('rect', startX + 250, startY + 230, '显示错误提示');
+        const s5 = this.createShape('rect', startX, startY + 360, '生成Token');
+        const s6 = this.createShape('rounded-rect', startX, startY + 480, '进入首页');
+        this.shapes.push(s1, s2, s3, s4, s5, s6);
+        this.addConnection(s1.id, s2.id);
+        this.addConnection(s2.id, s3.id);
+        this.addConnection(s3.id, s5.id);
+        this.connections[2].label = '是';
+        this.addConnection(s3.id, s4.id);
+        this.connections[3].label = '否';
+        this.addConnection(s4.id, s2.id);
+        this.addConnection(s5.id, s6.id);
+        break;
+      }
+      case 'crud-flow': {
+        const s1 = this.createShape('rounded-rect', startX, startY, 'API请求');
+        const s2 = this.createShape('diamond', startX, startY + 120, '请求类型?');
+        const s3 = this.createShape('rect', startX - 180, startY + 250, 'GET 查询数据');
+        const s4 = this.createShape('rect', startX, startY + 250, 'POST 创建数据');
+        const s5 = this.createShape('rect', startX + 180, startY + 250, 'PUT/PATCH\n更新数据');
+        const s6 = this.createShape('rect', startX + 360, startY + 250, 'DELETE 删除');
+        const s7 = this.createShape('cylinder', startX, startY + 400, '数据库');
+        const s8 = this.createShape('rounded-rect', startX, startY + 520, '返回响应');
+        this.shapes.push(s1, s2, s3, s4, s5, s6, s7, s8);
+        this.addConnection(s1.id, s2.id);
+        this.addConnection(s2.id, s3.id); this.connections[1].label = 'GET';
+        this.addConnection(s2.id, s4.id); this.connections[2].label = 'POST';
+        this.addConnection(s2.id, s5.id); this.connections[3].label = 'PUT';
+        this.addConnection(s2.id, s6.id); this.connections[4].label = 'DELETE';
+        this.addConnection(s3.id, s7.id);
+        this.addConnection(s4.id, s7.id);
+        this.addConnection(s5.id, s7.id);
+        this.addConnection(s6.id, s7.id);
+        this.addConnection(s7.id, s8.id);
+        break;
+      }
+      case 'microservice': {
+        const gw = this.createShape('rect', startX + 200, startY, 'API 网关');
+        gw.fill = '#37474F'; gw.stroke = '#607D8B';
+        const auth = this.createShape('rect', startX, startY + 200, '认证服务\nAuth Service');
+        const user = this.createShape('rect', startX + 200, startY + 200, '用户服务\nUser Service');
+        const order = this.createShape('rect', startX + 400, startY + 200, '订单服务\nOrder Service');
+        const pay = this.createShape('rect', startX + 200, startY + 360, '支付服务\nPayment Service');
+        const notify = this.createShape('rect', startX + 400, startY + 360, '通知服务\nNotify Service');
+        const db = this.createShape('cylinder', startX + 200, startY + 500, 'MySQL集群');
+        const redis = this.createShape('cylinder', startX + 400, startY + 500, 'Redis缓存');
+        const mq = this.createShape('rect', startX, startY + 500, '消息队列\nRabbitMQ');
+        this.shapes.push(gw, auth, user, order, pay, notify, db, redis, mq);
+
+        [auth, user, order].forEach(s => this.addConnection(gw.id, s.id));
+        this.addConnection(auth.id, user.id);
+        this.addConnection(user.id, order.id);
+        this.addConnection(order.id, pay.id);
+        this.addConnection(pay.id, notify.id);
+
+        this.addConnection(user.id, db.id);
+        this.addConnection(order.id, db.id);
+        this.addConnection(user.id, redis.id);
+        this.addConnection(order.id, mq.id);
+        this.addConnection(pay.id, mq.id);
+        break;
+      }
+      case 'web-arch': {
+        const lb = this.createShape('rect', startX + 200, startY, '负载均衡\nNginx');
+        lb.fill = '#1B5E20'; lb.stroke = '#4CAF50';
+        const web1 = this.createShape('rect', startX, startY + 150, 'Web服务器 1');
+        const web2 = this.createShape('rect', startX + 200, startY + 150, 'Web服务器 2');
+        const web3 = this.createShape('rect', startX + 400, startY + 150, 'Web服务器 3');
+        const app1 = this.createShape('rect', startX, startY + 300, '应用服务器 1');
+        const app2 = this.createShape('rect', startX + 200, startY + 300, '应用服务器 2');
+        const app3 = this.createShape('rect', startX + 400, startY + 300, '应用服务器 3');
+        const cache = this.createShape('cylinder', startX - 50, startY + 450, 'Redis\n缓存层');
+        const db = this.createShape('cylinder', startX + 400, startY + 450, 'MySQL\n主从集群');
+        const fs = this.createShape('cloud', startX + 200, startY + 450, 'OSS\n文件存储');
+        [web1, web2, web3, app1, app2, app3, cache, db, fs].forEach(s => this.shapes.push(s));
+        [web1, web2, web3].forEach(w => this.addConnection(lb.id, w.id));
+        [web1, web2, web3].forEach((w, i) => this.addConnection(w.id, [app1, app2, app3][i].id));
+        [app1, app2, app3].forEach(a => {
+          this.addConnection(a.id, cache.id);
+          this.addConnection(a.id, db.id);
+        });
+        this.addConnection(app2.id, fs.id);
+        break;
+      }
+      case 'api-flow': {
+        const client = this.createShape('rect', startX, startY, '客户端\nBrowser/App');
+        client.fill = '#37474F';
+        const dns = this.createShape('cloud', startX + 300, startY, 'DNS解析');
+        const cdn = this.createShape('cloud', startX, startY + 150, 'CDN\n静态资源');
+        const gw = this.createShape('rect', startX + 300, startY + 150, 'API网关\n限流/鉴权');
+        const svc = this.createShape('rect', startX + 300, startY + 280, '业务服务');
+        const mq = this.createShape('rect', startX, startY + 280, '消息队列');
+        const db = this.createShape('cylinder', startX + 300, startY + 410, '数据库');
+        const cache = this.createShape('cylinder', startX, startY + 410, '缓存');
+        [client, dns, cdn, gw, svc, mq, db, cache].forEach(s => this.shapes.push(s));
+        this.addConnection(client.id, dns.id);
+        this.addConnection(dns.id, gw.id);
+        this.addConnection(client.id, cdn.id);
+        this.addConnection(gw.id, svc.id);
+        this.addConnection(svc.id, mq.id);
+        this.addConnection(svc.id, db.id);
+        this.addConnection(svc.id, cache.id);
+        this.addConnection(mq.id, svc.id);
+        break;
+      }
+    }
+
+    this.selectShape(null);
+    this.selectConnection(null);
+    this.undoStack = [];
+    this.redoStack = [];
+    this.saveState();
+    this.zoomFit();
+    this.showToast('模板已加载！');
+  }
+
+  // ========== 工具方法 ==========
+  showToast(msg) {
+    const existing = document.querySelector('.toast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2100);
+  }
+}
+
+// ======= 初始化 =======
+document.addEventListener('DOMContentLoaded', () => {
+  const tool = new DiagramTool();
+
+  // 补充键盘松开事件（keyup绑定到keyUpHandler）
+  document.addEventListener('keyup', (e) => {
+    if (e.key === ' ') {
+      tool.spacePressed = false;
+      tool.canvas.style.cursor = tool.mode === 'pan' ? 'grab' : 'default';
+    }
+  });
+
+  // 防止形状面板拖拽时浏览器默认行为
+  document.querySelectorAll('.shape-item').forEach(item => {
+    item.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('shapeType', item.dataset.shape);
+      e.dataTransfer.effectAllowed = 'copy';
+    });
+  });
+
+  console.log('✅ 系统流程图 & 功能模块图绘制工具已就绪');
+  console.log('  🖱️ 点击左侧形状添加到画布');
+  console.log('  🔗 选择连线模式后在形状间拖拽连线');
+  console.log('  ✏️ 双击形状编辑文字');
+  console.log('  ⌨️ 快捷键: V=选择 L=连线 H=拖动 Delete=删除 Ctrl+Z=撤销');
+  console.log('  🖼️ 支持导出PNG和SVG');
+  console.log('  📋 内置多种预设模板可直接使用');
+});
+</script>
+</body>
+</html>
